@@ -1,3 +1,6 @@
 node_modules/
 tests/node_modules/
 .superpowers/
+.DS_Store
+coverage/
+*.log

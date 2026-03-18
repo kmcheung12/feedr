@@ -22,5 +22,11 @@
   },
   "icons": {
     "48": "icons/icon-48.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "feedr@local",
+      "strict_min_version": "109.0"
+    }
   }
 }
