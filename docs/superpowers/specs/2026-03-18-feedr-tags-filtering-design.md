@@ -28,6 +28,11 @@ tags: string[]   // default [] for new feeds; treated as [] if undefined on exis
 
 No schema migration is required — IndexedDB does not enforce a schema, and existing records without `tags` are treated as `[]` by the UI.
 
+### Constraints
+
+- Maximum 20 tags per feed (enforced in UI; background trusts the UI and stores as-is)
+- Maximum 40 characters per tag (enforced via `maxlength` on the input)
+
 ### New message type
 
 Add `UPDATE_FEED_TAGS` to `lib/constants.js`:
@@ -37,9 +42,36 @@ UPDATE_FEED_TAGS: 'UPDATE_FEED_TAGS'
 ```
 
 **Payload:** `{ id: number, tags: string[] }`
-**Response:** `{}` on success, `{ error: 'FEED_NOT_FOUND' }` if feed id is missing.
 
-Background handler calls `db.updateFeed(id, { tags })`.
+**Response:** `{ ok: true }` on success (consistent with all existing handlers). On error, the background catch path returns `{ error: err.message }`. `db.updateFeed` rejects with `new Error('NOT_FOUND')` if the feed id is missing, so the caller receives `{ error: 'NOT_FOUND' }`.
+
+Background handler calls `db.updateFeed(id, { tags })` and returns `{ ok: true }`. The handler does not re-normalise tags — it stores what the UI sends.
+
+No manifest change is required — `lib/constants.js` is already in the background scripts list and `newtab/newtab.js` already runs in the newtab page.
+
+---
+
+## Tag Normalisation
+
+Tags are normalised before being added to the `tags` array:
+
+1. Strip all commas from the raw input string (`,` is the add-trigger character, not a multi-tag separator — `foo,bar` entered together produces the single tag `foobar`, not two tags)
+2. Trim whitespace
+3. Lowercase
+4. Discard if empty after the above steps
+
+Duplicate tags (after normalisation) are silently ignored.
+
+---
+
+## State
+
+New state variables in `newtab.js` (alongside the existing `feeds`, `articles`, `selectedArticleId`, `currentSort`):
+
+```js
+let activeTags = new Set();   // tags currently selected in the filter bar
+let expandedFeedId = null;    // id of the feed whose tag editor is currently open, or null
+```
 
 ---
 
@@ -47,39 +79,77 @@ Background handler calls `db.updateFeed(id, { tags })`.
 
 ### Tag filter bar (feed panel)
 
-- Rendered between the "Feeds" panel header and the `#feed-list`
-- Shows one chip per unique tag, derived client-side from all feeds in the `feeds` array (no additional message)
-- Hidden when no feeds have any tags
-- Clicking a chip toggles it active/inactive
+The `<aside id="panel-feeds">` DOM order after this change:
+
+```html
+<div class="panel-header">…</div>
+<div id="add-feed-form" class="hidden">…</div>
+<div id="tag-filter-bar"></div>   <!-- new -->
+<ul id="feed-list"></ul>
+```
+
+`#tag-filter-bar` is hidden (`.hidden` class, already defined in the stylesheet) when no feeds have any tags.
+
+Render one `<button>` chip per unique tag, sorted alphabetically, derived by iterating `feeds`, flattening `feed.tags ?? []`, and deduplicating. No extra message needed.
+
 - Active chips: `--accent` background, white text
 - Inactive chips: `--surface` background, `--muted` text
+- Clicking a chip toggles it in `activeTags` then calls `renderArticleList()`
 - No explicit "All" button — deselecting all chips restores the full article list
+
+`renderTagFilterBar()` is always called alongside `renderFeedList()`. Every call site must invoke both:
+
+| Call site | Action |
+|-----------|--------|
+| `loadFeeds()` | calls `renderFeedList()` then `renderTagFilterBar()` |
+| `loadArticles()` (calls `renderFeedList()` to refresh unread counts) | must also call `renderTagFilterBar()` after |
+| `selectArticle()` (calls `renderFeedList()` to refresh unread badge after mark-read) | must also call `renderTagFilterBar()` after |
+| After `UPDATE_FEED_TAGS` success (in-place patch path) | calls `renderFeedList()` then `renderTagFilterBar()` |
 
 ### Article list filtering
 
-When one or more tag chips are active:
-- `renderArticleList()` filters `articles` to those whose `feedId` belongs to a feed that has at least one of the active tags
-- Filter is OR logic: an article is shown if its feed has ANY of the active tags
-- Active tag state lives in `newtab.js` as `let activeTags = new Set()`
+`renderArticleList()` logic (order matters):
 
-When no chips are active: all articles are shown (existing behaviour).
+1. Build a filtered list: if `activeTags` is non-empty, keep only articles where `feeds.find(f => f.id === article.feedId)?.tags ?? []` contains at least one tag from `activeTags`. If `activeTags` is empty, use all articles.
+2. If filtered list is empty and `activeTags` is non-empty → render: `"No articles match the selected tags."`
+3. If filtered list is empty and `activeTags` is empty → render: `"No articles yet."`
+4. Otherwise render the filtered list.
+
+Sort (time / domain) is applied to the filtered list. Filtering and sorting are independent.
+
+### Feed removal and `activeTags`
+
+When a feed is removed, `loadFeeds()` and `loadArticles()` are called (existing behaviour). `renderTagFilterBar()` redraws from the updated `feeds` array, so any tag no longer carried by any feed will not appear as a chip. Stale entries in `activeTags` match nothing and produce correct (empty) filter results. If all remaining feeds lack the stale tag, the "No articles match the selected tags" empty state appears — this is acceptable because no chip is highlighted in the filter bar, making the empty state legible. No explicit cleanup of `activeTags` on feed removal is required.
 
 ### Feed list item — collapsed state
 
-Each feed `<li>` shows its tags as small read-only pills appended after the feed title, before the unread badge and action buttons. Pills are visible at a glance without expanding.
+Each feed `<li>` is built via `innerHTML` (existing pattern). Tag pills are rendered as `<span class="tag-pill">` elements inside that template. Tag text must be passed through `escHtml()` before interpolation.
+
+Clicking anywhere on the `<li>` body opens the tag editor for that feed. The `<li>` has a single click handler that calls `toggleFeedEditor(feed.id)`. The refresh and remove buttons call `e.stopPropagation()` (existing). Collapsed-state tag pills do **not** call `stopPropagation()` — clicks on them bubble to the `<li>` handler, which opens the editor. Clicking a collapsed-state tag pill does **not** activate the tag filter; to filter, the user uses the `#tag-filter-bar` chips.
 
 ### Feed list item — expanded state (tag editor)
 
-Clicking a feed item toggles an expanded section below it within the same `<li>`. Only one feed can be expanded at a time (expanding another collapses the previous).
+`expandedFeedId` tracks which feed's editor is open. When `toggleFeedEditor(id)` is called:
 
-The expanded section contains:
-- Current tags rendered as chips with an × button to remove
-- A text input with placeholder "Add tag…"
-  - Pressing **Enter** or **,** adds the trimmed, lowercased tag (duplicate tags are silently ignored)
-  - The input is cleared after adding
-- Every add or remove fires `UPDATE_FEED_TAGS` immediately (no explicit save button)
+- If `expandedFeedId === id` → set `expandedFeedId = null` (collapse)
+- Otherwise → set `expandedFeedId = id` (collapse previous, open new)
 
-Clicking the feed item again (or clicking another feed item) collapses the editor.
+Then call `renderFeedList()` (which rebuilds the DOM and re-creates the editor for `expandedFeedId`).
+
+Since `renderFeedList()` sets `list.innerHTML = ''` and rebuilds all `<li>` elements, the tag editor DOM is always created fresh during render. `renderFeedList()` checks `expandedFeedId` for each feed and, if it matches, appends the editor:
+
+```
+if (feed.id === expandedFeedId) {
+  appendTagEditor(li, feed);
+}
+```
+
+`appendTagEditor(li, feed)` creates the editor imperatively (not via `innerHTML`) so event listeners are attached directly:
+
+- Current tags as `<span class="tag-chip">` + `<button class="tag-remove">×</button>`. Clicking × removes the tag, fires `UPDATE_FEED_TAGS`, on success patches `feed.tags` in the `feeds` array entry (find by id), then calls `renderFeedList()` and `renderTagFilterBar()`.
+- `<input type="text" placeholder="Add tag…" maxlength="40">`. If `feed.tags.length >= 20` the input is disabled with `title="Max 20 tags"`. Pressing **Enter** or **,** normalises the input value and, if non-empty and not duplicate, adds it, fires `UPDATE_FEED_TAGS`, on success patches `feed.tags`, then calls `renderFeedList()` and `renderTagFilterBar()`.
+
+**Error handling for `UPDATE_FEED_TAGS`:** If the response contains `{ error }`, the add/remove operation is not applied to the in-memory `feeds` entry. No error UI is required — the tag simply does not appear/disappear. (Feed removal mid-session is the only realistic error case.)
 
 ---
 
@@ -89,17 +159,14 @@ Clicking the feed item again (or clicking another feed item) collapses the edito
 |------|--------|
 | `lib/constants.js` | Add `UPDATE_FEED_TAGS` constant |
 | `background.js` | Add `handleUpdateFeedTags` message handler |
-| `newtab/newtab.html` | Add `#tag-filter-bar` container between panel header and `#feed-list` |
-| `newtab/newtab.css` | Styles for tag chips (filter bar + feed item pills + editor) |
-| `newtab/newtab.js` | `activeTags` state, filter bar rendering, inline editor toggle, article filter logic |
+| `newtab/newtab.html` | Add `<div id="tag-filter-bar"></div>` between `#add-feed-form` and `#feed-list` inside `#panel-feeds` |
+| `newtab/newtab.css` | Styles for `.tag-pill`, tag chips in `#tag-filter-bar`, `.tag-editor`, `.tag-chip`, `.tag-remove` |
+| `newtab/newtab.js` | `activeTags` + `expandedFeedId` state; `renderTagFilterBar()`; `toggleFeedEditor()`; `appendTagEditor()`; article filter + empty-state logic; updated `renderFeedList()` call sites |
+| `manifest.json` | No change needed |
 
 ---
 
 ## Behaviour Details
-
-### Tag normalisation
-
-Tags are trimmed and lowercased before storing. Empty strings after trim are discarded.
 
 ### Filter + sort interaction
 
@@ -111,7 +178,7 @@ If the currently-selected article's feed loses visibility due to a tag filter ch
 
 ### No tags case
 
-If no feeds have tags, the filter bar is not rendered (or rendered empty and hidden). The UI looks identical to the current state.
+If no feeds have tags, `#tag-filter-bar` has the `.hidden` class. The UI looks identical to the current state.
 
 ---
 
