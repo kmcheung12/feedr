@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Feedr</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Left panel: feed list -->
+    <aside id="panel-feeds">
+      <div class="panel-header">
+        <span class="panel-title">Feeds</span>
+        <button id="btn-show-add" title="Add feed">+</button>
+      </div>
+      <div id="add-feed-form" class="hidden">
+        <input id="add-feed-url" type="url" placeholder="https://example.com/feed.xml">
+        <button id="btn-add-feed">Add</button>
+        <p id="add-feed-error" class="error-text hidden"></p>
+      </div>
+      <ul id="feed-list"></ul>
+    </aside>
+
+    <!-- Middle panel: article list -->
+    <main id="panel-articles">
+      <div class="panel-header">
+        <span class="panel-title">Articles</span>
+        <div class="sort-controls">
+          <label><input type="radio" name="sort" value="time" checked> Time</label>
+          <label><input type="radio" name="sort" value="domain"> Source</label>
+        </div>
+      </div>
+      <ul id="article-list"></ul>
+    </main>
+
+    <!-- Right panel: article reader -->
+    <article id="panel-reader">
+      <div id="reader-placeholder" class="placeholder-text">Select an article to read</div>
+      <div id="reader-content" class="hidden">
+        <div id="reader-meta">
+          <h1 id="reader-title"></h1>
+          <p id="reader-byline"></p>
+          <a id="reader-original" href="#" target="_blank" rel="noopener">Open original ↗</a>
+        </div>
+        <div id="reader-body"></div>
+      </div>
+    </article>
+  </div>
+
+  <script src="../lib/constants.js"></script>
+  <script src="newtab.js"></script>
+</body>
+</html>
