@@ -43,21 +43,43 @@ function renderFeedList() {
     const li = document.createElement('li');
     li.dataset.feedId = feed.id;
     li.title = feed.url;
+    if (feed.fetchError) li.classList.add('feed-error');
+
+    const lastFetchedText = feed.lastFetched
+      ? new Date(feed.lastFetched).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+      : '';
 
     li.innerHTML = `
       <span class="feed-title">${escHtml(feed.title || feed.url)}</span>
+      ${feed.fetchError ? `<span class="feed-error-badge" title="${escHtml(feed.fetchError)}">!</span>` : ''}
       ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
-      <button class="btn-refresh" data-feed-id="${feed.id}" title="Refresh">&#8635;</button>
+      <button class="btn-refresh" title="${lastFetchedText ? 'Last fetched: ' + lastFetchedText : 'Refresh'}">&#8635;</button>
+      <button class="btn-remove" title="Remove feed">&times;</button>
     `;
 
     li.querySelector('.btn-refresh').addEventListener('click', async (e) => {
       e.stopPropagation();
       const btn = e.currentTarget;
       btn.textContent = '…';
-      await send(MSG.FETCH_FEED, { id: feed.id });
+      const resp = await send(MSG.FETCH_FEED, { id: feed.id });
       btn.textContent = '↻';
+      if (resp.error) {
+        btn.title = 'Refresh failed: ' + resp.error;
+        btn.style.color = 'var(--danger)';
+      } else {
+        btn.title = 'Refresh';
+        btn.style.color = '';
+      }
+      await loadFeeds();
       await loadArticles();
-      renderFeedList();
+    });
+
+    li.querySelector('.btn-remove').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Remove "${feed.title || feed.url}"?`)) return;
+      await send(MSG.REMOVE_FEED, { id: feed.id });
+      await loadFeeds();
+      await loadArticles();
     });
 
     list.appendChild(li);
@@ -238,7 +260,7 @@ function sanitize(html) {
       if (attr.name.startsWith('on')) {
         el.removeAttribute(attr.name);
       } else if (['href', 'src', 'action'].includes(attr.name)) {
-        if (/^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+        if (/^\s*(javascript|data):/i.test(attr.value)) el.removeAttribute(attr.name);
       }
     });
   });

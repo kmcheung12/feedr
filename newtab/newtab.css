@@ -59,12 +59,21 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   border-radius: 999px; padding: 1px 6px; flex-shrink: 0;
 }
 
-#feed-list li .btn-refresh {
+#feed-list li .btn-refresh,
+#feed-list li .btn-remove {
   background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px; padding: 0 2px;
-  opacity: 0; transition: opacity .15s;
+  opacity: 0; transition: opacity .15s; flex-shrink: 0;
 }
-#feed-list li:hover .btn-refresh { opacity: 1; }
+#feed-list li:hover .btn-refresh,
+#feed-list li:hover .btn-remove { opacity: 1; }
 #feed-list li .btn-refresh:hover { color: var(--accent); }
+#feed-list li .btn-remove:hover { color: var(--danger); }
+
+#feed-list li .feed-error-badge {
+  font-size: 10px; font-weight: 700; background: var(--danger); color: #fff;
+  border-radius: 999px; padding: 1px 5px; flex-shrink: 0; cursor: default;
+}
+#feed-list li.feed-error .feed-title { color: var(--danger); }
 
 /* ── Add feed ── */
 #btn-show-add { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
