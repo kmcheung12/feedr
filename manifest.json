@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Feedr",
+  "version": "0.1.0",
+  "description": "In-browser RSS/Atom feed aggregator",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["lib/constants.js", "lib/db.js", "lib/parser.js", "lib/Readability.js", "background.js"],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_icon": {"48": "icons/icon-48.png"},
+    "default_popup": "popup/popup.html",
+    "default_title": "Add feed to Feedr"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab/newtab.html"
+  },
+  "icons": {
+    "48": "icons/icon-48.png"
+  }
+}
