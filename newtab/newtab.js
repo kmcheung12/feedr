@@ -183,6 +183,9 @@ async function selectArticle(id) {
 
     const resp = await send(MSG.FETCH_ARTICLE, { id });
 
+    // Guard against stale response if user selected a different article while fetching
+    if (selectedArticleId !== id) return;
+
     if (resp.readableContent) {
       article.readableContent = resp.readableContent;
       document.getElementById('reader-body').innerHTML = sanitize(resp.readableContent);
@@ -223,14 +226,20 @@ function showReaderShell(article) {
   document.getElementById('panel-reader').scrollTop = 0;
 }
 
-// Minimal sanitizer: strip <script>, <style>, and on* event handlers from Readability output.
+// Sanitizer: remove dangerous elements and attributes from Readability output.
+// Strips script/style elements, iframes/objects/embeds, on* handlers,
+// and javascript: URIs in href/src/action attributes.
 function sanitize(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
-  div.querySelectorAll('script, style').forEach(el => el.remove());
+  div.querySelectorAll('script, style, iframe, object, embed').forEach(el => el.remove());
   div.querySelectorAll('*').forEach(el => {
     Array.from(el.attributes).forEach(attr => {
-      if (attr.name.startsWith('on')) el.removeAttribute(attr.name);
+      if (attr.name.startsWith('on')) {
+        el.removeAttribute(attr.name);
+      } else if (['href', 'src', 'action'].includes(attr.name)) {
+        if (/^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+      }
     });
   });
   return div.innerHTML;
