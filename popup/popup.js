@@ -41,13 +41,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     messageEl.className = 'message hidden';
     try {
       const resp = await browser.runtime.sendMessage({ type: MSG.ADD_FEED, url });
-      if (resp && resp.error) throw new Error(resp.error);
+      if (resp && resp.error) {
+        const text = resp.error === 'FEED_EXISTS' ? 'Already in your feeds.'
+                   : resp.error === 'NOT_A_FEED'  ? 'URL is not a valid RSS/Atom feed.'
+                   : 'Could not add feed: ' + resp.error;
+        showMessage(text, 'error');
+        return;
+      }
       showMessage('Feed added!', 'success');
     } catch (e) {
-      const text = e.message === 'FEED_EXISTS' ? 'Already in your feeds.'
-                 : e.message === 'NOT_A_FEED'  ? 'URL is not a valid RSS/Atom feed.'
-                 : 'Could not add feed: ' + e.message;
-      showMessage(text, 'error');
+      showMessage('Could not add feed: ' + e.message, 'error');
     }
   }
 
