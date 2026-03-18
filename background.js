@@ -64,7 +64,14 @@ async function handleFetchFeed(id) {
     throw new Error('NETWORK_ERROR');
   }
 
-  const { articles } = parseFeed(xml);
+  let articles;
+  try {
+    ({ articles } = parseFeed(xml));
+  } catch (e) {
+    await db.updateFeed(id, { fetchError: e.message });
+    throw e;
+  }
+
   const withFeedId = articles.map(a => Object.assign({}, a, { feedId: id }));
   await db.upsertArticles(withFeedId);
   await db.updateFeed(id, { lastFetched: Date.now(), fetchError: null });
