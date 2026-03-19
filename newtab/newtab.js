@@ -316,10 +316,15 @@ function renderArticleList() {
       return feedTags.some(t => activeTags.has(t));
     });
   }
+  if (selectedFeedId !== null) {
+    visible = visible.filter(a => a.feedId === selectedFeedId);
+  }
 
   if (visible.length === 0) {
     const msg = activeTags.size > 0
       ? 'No articles match the selected tags.'
+      : selectedFeedId !== null
+      ? 'No articles in this feed.'
       : 'No articles yet.';
     list.innerHTML = `<li style="padding:14px;color:var(--muted);font-size:12px">${msg}</li>`;
     return;
