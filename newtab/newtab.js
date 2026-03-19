@@ -143,7 +143,9 @@ function renderTagFilterBar() {
         activeTags.delete(tag);
       } else {
         activeTags.add(tag);
+        selectedFeedId = null; // mutual exclusivity: activating a tag clears feed selection
       }
+      renderFeedList();      // update feed-selected CSS highlight
       renderTagFilterBar();
       renderArticleList();
     });
