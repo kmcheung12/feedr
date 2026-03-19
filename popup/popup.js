@@ -2,6 +2,10 @@
 // Detects RSS/Atom <link> elements on the active tab and lets the user add the feed.
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Detect incognito before any send() calls or UI setup.
+  const win = await chrome.windows.getCurrent();
+  const isPrivate = win.incognito;
+
   const detectedSection = document.getElementById('detected');
   const detectedUrl = document.getElementById('detected-url');
   const btnAddDetected = document.getElementById('btn-add-detected');
@@ -13,18 +17,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Detect RSS links on the current tab
   let feedUrl = null;
   try {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-    const results = await browser.tabs.executeScript(tab.id, {
-      code: `
-        (function() {
-          const el = document.querySelector(
-            'link[type="application/rss+xml"], link[type="application/atom+xml"]'
-          );
-          return el ? el.href : null;
-        })()
-      `
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const el = document.querySelector(
+          'link[type="application/rss+xml"], link[type="application/atom+xml"]'
+        );
+        return el ? el.href : null;
+      }
     });
-    feedUrl = results && results[0];
+    feedUrl = results && results[0] && results[0].result;
   } catch (e) {
     // executeScript may fail on about:, file: etc. — that's fine
   }
@@ -40,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!url) return;
     messageEl.className = 'message hidden';
     try {
-      const resp = await browser.runtime.sendMessage({ type: MSG.ADD_FEED, url });
+      const resp = await chrome.runtime.sendMessage({ type: MSG.ADD_FEED, url, private: isPrivate });
       if (resp && resp.error) {
         const text = resp.error === 'FEED_EXISTS' ? 'Already in your feeds.'
                    : resp.error === 'NOT_A_FEED'  ? 'URL is not a valid RSS/Atom feed.'
@@ -59,7 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   manualUrl.addEventListener('keydown', e => { if (e.key === 'Enter') addFeed(manualUrl.value.trim()); });
 
   document.getElementById('btn-open-feedr').addEventListener('click', async () => {
-    await browser.tabs.create({ url: browser.runtime.getURL('newtab/newtab.html') });
+    await chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
     window.close();
   });
 
