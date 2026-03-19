@@ -65,8 +65,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // Must include at least one modifier key (Ctrl, Alt, or Meta).
+      // Must include at least one modifier key (Ctrl, Alt, or Meta),
+      // and the triggering key must be a non-modifier (wait for the full combo).
       if (!e.ctrlKey && !e.altKey && !e.metaKey) return;
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
 
       const combo = buildCombo(e);
       finish(shortcutLabel(combo), combo);
