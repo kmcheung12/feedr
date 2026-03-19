@@ -138,6 +138,7 @@ function appendTagEditor(li, feed) {
   const tags = feed.tags || [];
   const editor = document.createElement('div');
   editor.className = 'tag-editor';
+  editor.addEventListener('click', e => e.stopPropagation());
 
   // Existing tags as removable chips
   tags.forEach(tag => {
