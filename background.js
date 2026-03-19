@@ -20,6 +20,7 @@ async function handleMessage(message) {
     case MSG.MARK_READ:     return handleMarkRead(message.id);
     case MSG.GET_FEEDS:     return handleGetFeeds();
     case MSG.GET_ARTICLES:  return handleGetArticles(message.sort);
+    case MSG.UPDATE_FEED_TAGS: return handleUpdateFeedTags(message.id, message.tags);
     default: throw new Error('UNKNOWN_MESSAGE_TYPE');
   }
 }
@@ -138,6 +139,11 @@ async function handleGetArticles(sort = 'time') {
   }
 
   return { articles };
+}
+
+async function handleUpdateFeedTags(id, tags) {
+  await db.updateFeed(id, { tags });
+  return { ok: true };
 }
 
 // --- Helpers ---
