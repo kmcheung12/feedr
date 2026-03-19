@@ -36,10 +36,7 @@ async function handleMessage(message) {
     case MSG.OPEN_FEEDR:
       await chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
       return { ok: true };
-    case MSG.ADD_FEED_VIA_POPUP:
-      await chrome.storage.session.set({ pending_add_url: message.url });
-      await chrome.action.openPopup();
-      return { ok: true };
+    case MSG.ADD_FEED_FROM_SHORTCUT: return handleAddFeed(message.url, store);
     default: throw new Error('UNKNOWN_MESSAGE_TYPE');
   }
 }

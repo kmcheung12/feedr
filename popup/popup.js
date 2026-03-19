@@ -118,36 +118,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnShortcutAdd.addEventListener('click',  () => startRecording(btnShortcutAdd,  'shortcut_add'));
   btnShortcutOpen.addEventListener('click', () => startRecording(btnShortcutOpen, 'shortcut_open'));
 
-  // --- Feed detection / shortcut pending add ---
+  // --- Feed detection ---
 
-  // If opened via the add-feed shortcut, a URL is waiting in session storage.
-  const session = await chrome.storage.session.get('pending_add_url');
-  if (session.pending_add_url) {
-    await chrome.storage.session.remove('pending_add_url');
-    await addFeed(session.pending_add_url);
+  let feedUrl = null;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const el = document.querySelector(
+          'link[type="application/rss+xml"], link[type="application/atom+xml"]'
+        );
+        return el ? el.href : null;
+      }
+    });
+    feedUrl = results && results[0] && results[0].result;
+  } catch (e) {
+    // executeScript may fail on about:, file: etc. — that's fine
+  }
+
+  if (feedUrl) {
+    await addFeed(feedUrl);
   } else {
-    let feedUrl = null;
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          const el = document.querySelector(
-            'link[type="application/rss+xml"], link[type="application/atom+xml"]'
-          );
-          return el ? el.href : null;
-        }
-      });
-      feedUrl = results && results[0] && results[0].result;
-    } catch (e) {
-      // executeScript may fail on about:, file: etc. — that's fine
-    }
-
-    if (feedUrl) {
-      await addFeed(feedUrl);
-    } else {
-      statusEl.textContent = 'No feed detected on this page.';
-    }
+    statusEl.textContent = 'No feed detected on this page.';
   }
 
   // --- Add feed ---

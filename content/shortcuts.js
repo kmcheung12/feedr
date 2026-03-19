@@ -1,6 +1,6 @@
 // content/shortcuts.js
 // Listens globally for user-configured keyboard shortcuts and dispatches
-// OPEN_FEEDR or ADD_FEED messages to the background.
+// OPEN_FEEDR or ADD_FEED_FROM_SHORTCUT messages to the background.
 
 (function () {
   // MSG global is provided by lib/constants.js, which the manifest loads before this script.
@@ -50,6 +50,26 @@
     return parts.join('+');
   }
 
+  function showToast(message, isError) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = [
+      'position:fixed', 'bottom:20px', 'right:20px',
+      'padding:12px 16px',
+      'background:' + (isError ? '#3d1a1a' : '#0d4429'),
+      'color:'       + (isError ? '#f85149' : '#3fb950'),
+      'border:1px solid ' + (isError ? '#f85149' : '#3fb950'),
+      'border-radius:6px',
+      'font-family:system-ui,sans-serif',
+      'font-size:13px',
+      'z-index:2147483647',
+      'max-width:360px',
+      'word-break:break-all',
+    ].join(';');
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
+
   document.addEventListener('keydown', async (e) => {
     const combo = comboFromEvent(e);
     if (!combo) return;
@@ -65,7 +85,21 @@
       try {
         const url = await navigator.clipboard.readText();
         if (url && url.trim()) {
-          chrome.runtime.sendMessage({ type: MSG.ADD_FEED_VIA_POPUP, url: url.trim() });
+          const resp = await chrome.runtime.sendMessage({
+            type: MSG.ADD_FEED_FROM_SHORTCUT,
+            url: url.trim(),
+            private: chrome.extension.inIncognitoContext,
+          });
+          if (resp && resp.error) {
+            const text = resp.error === 'FEED_EXISTS'
+              ? `RSS feed already exists. ${url.trim()}`
+              : resp.error === 'NOT_A_FEED'
+              ? 'URL is not a valid RSS/Atom feed.'
+              : 'Could not add feed: ' + resp.error;
+            showToast(text, true);
+          } else {
+            showToast('RSS feed added.', false);
+          }
         }
       } catch (err) {
         // Clipboard access denied — silently ignore.
