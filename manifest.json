@@ -6,9 +6,14 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "clipboardRead"
   ],
   "host_permissions": ["<all_urls>"],
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["lib/constants.js", "content/shortcuts.js"]
+  }],
   "background": {
     "service_worker": "background.js",
     "scripts": ["lib/constants.js", "lib/db.js", "lib/parser.js", "lib/Readability.js", "lib/private-store.js", "background.js"]
