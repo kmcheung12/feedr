@@ -138,19 +138,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (feedUrl) {
-    await addFeed(feedUrl);
+    await addFeed(feedUrl, true);
   } else {
     statusEl.textContent = 'No feed detected on this page.';
   }
 
   // --- Add feed ---
 
-  async function addFeed(url) {
+  async function addFeed(url, autoDetected = false) {
     if (!url) return;
     messageEl.className = 'message hidden';
     try {
       const resp = await chrome.runtime.sendMessage({ type: MSG.ADD_FEED, url, private: isPrivate });
       if (resp && resp.error) {
+        if (resp.error === 'FEED_EXISTS' && autoDetected) return;
         const text = resp.error === 'FEED_EXISTS' ? `RSS feed already exists. ${url}`
                    : resp.error === 'NOT_A_FEED'  ? 'URL is not a valid RSS/Atom feed.'
                    : 'Could not add feed: ' + resp.error;
