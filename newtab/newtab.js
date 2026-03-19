@@ -172,12 +172,26 @@ function renderArticleList() {
   const list = document.getElementById('article-list');
   list.innerHTML = '';
 
-  if (articles.length === 0) {
-    list.innerHTML = '<li style="padding:14px;color:var(--muted);font-size:12px">No articles yet.</li>';
+  // `articles` is already sorted (by time or domain) — it arrives pre-sorted from
+  // the background via MSG.GET_ARTICLES. Filtering a sorted array preserves sort order.
+  let visible = articles;
+  if (activeTags.size > 0) {
+    visible = articles.filter(article => {
+      const feed = feeds.find(f => f.id === article.feedId);
+      const feedTags = feed ? (feed.tags || []) : [];
+      return feedTags.some(t => activeTags.has(t));
+    });
+  }
+
+  if (visible.length === 0) {
+    const msg = activeTags.size > 0
+      ? 'No articles match the selected tags.'
+      : 'No articles yet.';
+    list.innerHTML = `<li style="padding:14px;color:var(--muted);font-size:12px">${msg}</li>`;
     return;
   }
 
-  articles.forEach(article => {
+  visible.forEach(article => {
     const li = document.createElement('li');
     li.dataset.articleId = article.id;
     if (article.readAt) li.classList.add('read');
