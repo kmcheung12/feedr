@@ -1,5 +1,6 @@
 // popup/popup.js
 // Detects RSS/Atom <link> elements on the active tab and lets the user add the feed.
+// Also manages recording and display of two global keyboard shortcuts.
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Detect incognito before any send() calls or UI setup.
@@ -7,14 +8,101 @@ document.addEventListener('DOMContentLoaded', async () => {
   const isPrivate = win.incognito;
 
   const detectedSection = document.getElementById('detected');
-  const detectedUrl = document.getElementById('detected-url');
-  const btnAddDetected = document.getElementById('btn-add-detected');
-  const manualUrl = document.getElementById('manual-url');
-  const btnAddManual = document.getElementById('btn-add-manual');
-  const messageEl = document.getElementById('message');
-  const statusEl = document.getElementById('status');
+  const detectedUrl     = document.getElementById('detected-url');
+  const btnAddDetected  = document.getElementById('btn-add-detected');
+  const manualUrl       = document.getElementById('manual-url');
+  const btnAddManual    = document.getElementById('btn-add-manual');
+  const messageEl       = document.getElementById('message');
+  const statusEl        = document.getElementById('status');
+  const btnShortcutAdd  = document.getElementById('btn-shortcut-add');
+  const btnShortcutOpen = document.getElementById('btn-shortcut-open');
 
-  // Detect RSS links on the current tab
+  // --- Shortcut display ---
+
+  function shortcutLabel(combo) {
+    return combo ? `⌨ ${combo}` : '⌨ —';
+  }
+
+  // Load stored shortcuts and update button labels.
+  const stored = await chrome.storage.local.get(['shortcut_open', 'shortcut_add']);
+  btnShortcutAdd.textContent  = shortcutLabel(stored.shortcut_add  || null);
+  btnShortcutOpen.textContent = shortcutLabel(stored.shortcut_open || null);
+
+  // --- Shortcut recording ---
+
+  let cancelRecording = null; // holds cleanup fn for the active recording session
+
+  function buildCombo(e) {
+    const parts = [];
+    if (e.ctrlKey)  parts.push('Ctrl');
+    if (e.altKey)   parts.push('Alt');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.metaKey)  parts.push('Meta');
+    const key = e.key;
+    if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) parts.push(key);
+    return parts.join('+');
+  }
+
+  function startRecording(btn, storageKey) {
+    // Cancel any existing recording first.
+    if (cancelRecording) cancelRecording();
+
+    const previous = btn.textContent;
+    btn.textContent = 'press key…';
+    btn.classList.add('recording');
+
+    function onKeyDown(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'Escape') {
+        finish(previous, null); // restore previous, no save
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        finish('⌨ —', ''); // clear shortcut
+        return;
+      }
+
+      // Must include at least one modifier key (Ctrl, Alt, or Meta).
+      if (!e.ctrlKey && !e.altKey && !e.metaKey) return;
+
+      const combo = buildCombo(e);
+      finish(shortcutLabel(combo), combo);
+    }
+
+    function onFocusIn(e) {
+      if (e.target !== btn) finish(previous, null);
+    }
+
+    function finish(label, saveValue) {
+      cleanup();
+      btn.textContent = label;
+      if (saveValue !== null) {
+        const obj = {};
+        obj[storageKey] = saveValue || null;
+        chrome.storage.local.set(obj);
+      }
+    }
+
+    function cleanup() {
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('focusin', onFocusIn);
+      btn.classList.remove('recording');
+      cancelRecording = null;
+    }
+
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('focusin', onFocusIn);
+    cancelRecording = cleanup;
+  }
+
+  btnShortcutAdd.addEventListener('click',  () => startRecording(btnShortcutAdd,  'shortcut_add'));
+  btnShortcutOpen.addEventListener('click', () => startRecording(btnShortcutOpen, 'shortcut_open'));
+
+  // --- Feed detection ---
+
   let feedUrl = null;
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -39,6 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusEl.textContent = 'No feed detected on this page.';
   }
 
+  // --- Add feed ---
+
   async function addFeed(url) {
     if (!url) return;
     messageEl.className = 'message hidden';
@@ -58,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   btnAddDetected.addEventListener('click', () => addFeed(feedUrl));
-  btnAddManual.addEventListener('click', () => addFeed(manualUrl.value.trim()));
+  btnAddManual.addEventListener('click',   () => addFeed(manualUrl.value.trim()));
   manualUrl.addEventListener('keydown', e => { if (e.key === 'Enter') addFeed(manualUrl.value.trim()); });
 
   document.getElementById('btn-open-feedr').addEventListener('click', async () => {
