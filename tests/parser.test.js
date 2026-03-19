@@ -190,4 +190,13 @@ describe('parseFeed — RSS 2.0 guid URL fallback', () => {
     const result = parseFeed(xml);
     expect(result.articles[0].url).toBe('https://example.com/post');
   });
+
+  test('no guid and no link → url is null', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBeNull();
+  });
 });
