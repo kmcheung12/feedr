@@ -160,7 +160,18 @@ Call `pruneActiveTags()` in three places:
    pruneActiveTags();
    ```
 
-3. **Feed-remove handler in `renderFeedList()`** — after `await loadFeeds(); await loadArticles();` in the `.btn-remove` click handler (lines 101–102). `loadFeeds()` already calls `pruneActiveTags()` internally (from call site 1), so no explicit additional call is needed here.
+3. **Feed-remove handler in `renderFeedList()`** — in the `.btn-remove` click handler (lines 97–103), clear `selectedFeedId` if the removed feed was selected, then let `loadFeeds()` handle `pruneActiveTags()` internally:
+   ```js
+   li.querySelector('.btn-remove').addEventListener('click', async (e) => {
+     e.stopPropagation();
+     if (!confirm(`Remove "${feed.title || feed.url}"?`)) return;
+     if (selectedFeedId === feed.id) selectedFeedId = null; // clear stale selection
+     await send(MSG.REMOVE_FEED, { id: feed.id });
+     await loadFeeds();   // calls pruneActiveTags() internally
+     await loadArticles();
+   });
+   ```
+   Without clearing `selectedFeedId`, the article list would show "No articles in this feed." with no feed visually highlighted after deletion.
 
 ---
 
