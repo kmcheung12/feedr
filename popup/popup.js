@@ -7,9 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const win = await chrome.windows.getCurrent();
   const isPrivate = win.incognito;
 
-  const detectedSection = document.getElementById('detected');
-  const detectedUrl     = document.getElementById('detected-url');
-  const btnAddDetected  = document.getElementById('btn-add-detected');
   const manualUrl       = document.getElementById('manual-url');
   const btnAddManual    = document.getElementById('btn-add-manual');
   const messageEl       = document.getElementById('message');
@@ -141,8 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (feedUrl) {
-    detectedSection.classList.remove('hidden');
-    detectedUrl.textContent = feedUrl;
+    await addFeed(feedUrl);
   } else {
     statusEl.textContent = 'No feed detected on this page.';
   }
@@ -155,19 +151,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const resp = await chrome.runtime.sendMessage({ type: MSG.ADD_FEED, url, private: isPrivate });
       if (resp && resp.error) {
-        const text = resp.error === 'FEED_EXISTS' ? 'Already in your feeds.'
+        const text = resp.error === 'FEED_EXISTS' ? `RSS feed already exists. ${url}`
                    : resp.error === 'NOT_A_FEED'  ? 'URL is not a valid RSS/Atom feed.'
                    : 'Could not add feed: ' + resp.error;
         showMessage(text, 'error');
         return;
       }
-      showMessage('Feed added!', 'success');
+      showMessage('RSS feed added.', 'success');
     } catch (e) {
       showMessage('Could not add feed: ' + e.message, 'error');
     }
   }
 
-  btnAddDetected.addEventListener('click', () => addFeed(feedUrl));
   btnAddManual.addEventListener('click',   () => addFeed(manualUrl.value.trim()));
   manualUrl.addEventListener('keydown', e => { if (e.key === 'Enter') addFeed(manualUrl.value.trim()); });
 
