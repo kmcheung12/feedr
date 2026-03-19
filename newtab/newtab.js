@@ -413,16 +413,33 @@ function bindKeyboardNav() {
     // State B: a link inside the reader panel has DOM focus — navigate links.
     const readerLink = e.target.closest('#panel-reader a');
     if (readerLink) {
+      const panel = document.getElementById('panel-reader');
       const links = Array.from(document.querySelectorAll('#panel-reader a[href]'));
       const idx = links.indexOf(readerLink);
       if (e.key === 'ArrowDown') {
-        if (idx < links.length - 1) links[idx + 1].focus();
+        if (idx < links.length - 1) {
+          const next = links[idx + 1];
+          const pr = panel.getBoundingClientRect();
+          const nr = next.getBoundingClientRect();
+          if (nr.top >= pr.top && nr.bottom <= pr.bottom) {
+            next.focus();
+          } else {
+            panel.scrollBy({ top: 200, behavior: 'smooth' });
+          }
+        }
         e.preventDefault();
       } else if (e.key === 'ArrowUp') {
         if (idx === 0) {
           document.getElementById('panel-reader').focus();
         } else {
-          links[idx - 1].focus();
+          const prev = links[idx - 1];
+          const pr = panel.getBoundingClientRect();
+          const pr2 = prev.getBoundingClientRect();
+          if (pr2.top >= pr.top && pr2.bottom <= pr.bottom) {
+            prev.focus();
+          } else {
+            panel.scrollBy({ top: -200, behavior: 'smooth' });
+          }
         }
         e.preventDefault();
       } else if (e.key === 'ArrowLeft' && idx === 0) {
