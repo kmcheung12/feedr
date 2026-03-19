@@ -38,8 +38,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.altKey)   parts.push('Alt');
     if (e.shiftKey) parts.push('Shift');
     if (e.metaKey)  parts.push('Meta');
-    const key = e.key;
-    if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) parts.push(key);
+    var k;
+    if (e.code) {
+      if (/^Key([A-Z])$/.test(e.code)) {
+        k = e.code.slice(3);                   // "KeyE" → "E"
+      } else if (/^Digit(\d)$/.test(e.code)) {
+        k = e.code.slice(5);                   // "Digit3" → "3"
+      } else if (/^Numpad(.+)$/.test(e.code)) {
+        k = 'Num' + e.code.slice(6);           // "Numpad0" → "Num0"
+      } else if (/^F(\d+)$/.test(e.code)) {
+        k = e.code;                            // "F12" → "F12"
+      } else {
+        // Arrow, Space, Backquote, Minus, etc. — use e.key as display label
+        // but only if it's a single printable char; otherwise use e.code
+        k = (e.key && e.key.length === 1) ? e.key.toUpperCase() : e.code;
+      }
+    } else {
+      // Fallback for browsers without e.code
+      k = e.key;
+    }
+    parts.push(k);
     return parts.join('+');
   }
 

@@ -22,15 +22,31 @@
 
   // Build a normalised combo string from a KeyboardEvent.
   // Format: Ctrl+Alt+Shift+Meta+Key (only present modifiers included)
+  // Key label uses e.code for layout-independent matching (same logic as popup buildCombo).
   function comboFromEvent(e) {
     const parts = [];
     if (e.ctrlKey)  parts.push('Ctrl');
     if (e.altKey)   parts.push('Alt');
     if (e.shiftKey) parts.push('Shift');
     if (e.metaKey)  parts.push('Meta');
-    const key = e.key;
+    var k;
+    if (e.code) {
+      if (/^Key([A-Z])$/.test(e.code)) {
+        k = e.code.slice(3);
+      } else if (/^Digit(\d)$/.test(e.code)) {
+        k = e.code.slice(5);
+      } else if (/^Numpad(.+)$/.test(e.code)) {
+        k = 'Num' + e.code.slice(6);
+      } else if (/^F(\d+)$/.test(e.code)) {
+        k = e.code;
+      } else {
+        k = (e.key && e.key.length === 1) ? e.key.toUpperCase() : e.code;
+      }
+    } else {
+      k = e.key;
+    }
     // Don't append the key itself if it IS a lone modifier press.
-    if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) parts.push(key);
+    if (!['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) parts.push(k);
     return parts.join('+');
   }
 
