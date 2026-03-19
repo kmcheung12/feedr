@@ -33,6 +33,9 @@ async function handleMessage(message) {
     case MSG.GET_FEEDS:        return handleGetFeeds(store);
     case MSG.GET_ARTICLES:     return handleGetArticles(message.sort, store);
     case MSG.UPDATE_FEED_TAGS: return handleUpdateFeedTags(message.id, message.tags, store);
+    case MSG.OPEN_FEEDR:
+      await chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
+      return { ok: true };
     default: throw new Error('UNKNOWN_MESSAGE_TYPE');
   }
 }
