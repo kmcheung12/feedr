@@ -12,6 +12,7 @@
   "host_permissions": ["<all_urls>"],
   "content_scripts": [{
     "matches": ["<all_urls>"],
+    "run_at": "document_start",
     "js": ["lib/constants.js", "content/shortcuts.js"]
   }],
   "background": {
