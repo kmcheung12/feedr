@@ -174,11 +174,12 @@ function renderArticleList() {
 
   // `articles` is already sorted (by time or domain) — it arrives pre-sorted from
   // the background via MSG.GET_ARTICLES. Filtering a sorted array preserves sort order.
+  const feedsById = new Map(feeds.map(f => [f.id, f]));
+
   let visible = articles;
   if (activeTags.size > 0) {
     visible = articles.filter(article => {
-      const feed = feeds.find(f => f.id === article.feedId);
-      const feedTags = feed ? (feed.tags || []) : [];
+      const feedTags = (feedsById.get(article.feedId) || {}).tags || [];
       return feedTags.some(t => activeTags.has(t));
     });
   }
@@ -197,7 +198,7 @@ function renderArticleList() {
     if (article.readAt) li.classList.add('read');
     if (article.id === selectedArticleId) li.classList.add('active');
 
-    const feed = feeds.find(f => f.id === article.feedId);
+    const feed = feedsById.get(article.feedId);
     const source = feed ? (feed.title || feed.url) : '';
     const date = article.publishedAt
       ? new Date(article.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
