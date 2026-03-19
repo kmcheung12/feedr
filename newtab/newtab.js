@@ -335,7 +335,7 @@ function navigateArticle(delta) {
   // findIndex returns -1 if no article is selected or if the selected article
   // was filtered out (e.g. by a tag change). Treat both as "no current position":
   // delta=1 → select first article; delta=-1 → do nothing.
-  let idx = visible.findIndex(a => a.id === selectedArticleId);
+  let idx = visible.findIndex(a => Number(a.id) === Number(selectedArticleId));
   if (idx === -1 && delta === -1) return;
 
   const newIdx = Math.min(Math.max(idx + delta, 0), visible.length - 1);
