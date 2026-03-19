@@ -62,6 +62,7 @@ function renderFeedList() {
     li.dataset.feedId = feed.id;
     li.title = feed.url;
     if (feed.fetchError) li.classList.add('feed-error');
+    if (feed.id === selectedFeedId) li.classList.add('feed-selected');
 
     const lastFetchedText = feed.lastFetched
       ? new Date(feed.lastFetched).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -74,6 +75,7 @@ function renderFeedList() {
       ${feed.fetchError ? `<span class="feed-error-badge" title="${escHtml(feed.fetchError)}">!</span>` : ''}
       ${tagPillsHtml}
       ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
+      <button class="btn-edit-tags" title="Edit tags">&#35;</button>
       <button class="btn-refresh" title="${lastFetchedText ? 'Last fetched: ' + lastFetchedText : 'Refresh'}">&#8635;</button>
       <button class="btn-remove" title="Remove feed">&times;</button>
     `;
@@ -95,15 +97,21 @@ function renderFeedList() {
       await loadArticles();
     });
 
+    li.querySelector('.btn-edit-tags').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFeedEditor(feed.id);
+    });
+
     li.querySelector('.btn-remove').addEventListener('click', async (e) => {
       e.stopPropagation();
       if (!confirm(`Remove "${feed.title || feed.url}"?`)) return;
+      if (selectedFeedId === feed.id) selectedFeedId = null;
       await send(MSG.REMOVE_FEED, { id: feed.id });
       await loadFeeds();
       await loadArticles();
     });
 
-    li.addEventListener('click', () => toggleFeedEditor(feed.id));
+    li.addEventListener('click', () => setSelectedFeed(feed.id));
 
     if (feed.id === expandedFeedId) {
       appendTagEditor(li, feed);
