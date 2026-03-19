@@ -52,9 +52,12 @@ function renderFeedList() {
       ? new Date(feed.lastFetched).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
       : '';
 
+    const tagPillsHtml = (feed.tags || []).map(t => `<span class="tag-pill">${escHtml(t)}</span>`).join('');
+
     li.innerHTML = `
       <span class="feed-title">${escHtml(feed.title || feed.url)}</span>
       ${feed.fetchError ? `<span class="feed-error-badge" title="${escHtml(feed.fetchError)}">!</span>` : ''}
+      ${tagPillsHtml}
       ${unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : ''}
       <button class="btn-refresh" title="${lastFetchedText ? 'Last fetched: ' + lastFetchedText : 'Refresh'}">&#8635;</button>
       <button class="btn-remove" title="Remove feed">&times;</button>
@@ -84,6 +87,12 @@ function renderFeedList() {
       await loadFeeds();
       await loadArticles();
     });
+
+    li.addEventListener('click', () => toggleFeedEditor(feed.id));
+
+    if (feed.id === expandedFeedId) {
+      appendTagEditor(li, feed);
+    }
 
     list.appendChild(li);
   });
@@ -117,6 +126,81 @@ function renderTagFilterBar() {
     });
     bar.appendChild(btn);
   });
+}
+
+function toggleFeedEditor(id) {
+  expandedFeedId = (expandedFeedId === id) ? null : id;
+  renderFeedList();
+  renderTagFilterBar();
+}
+
+function appendTagEditor(li, feed) {
+  const tags = feed.tags || [];
+  const editor = document.createElement('div');
+  editor.className = 'tag-editor';
+
+  // Existing tags as removable chips
+  tags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+
+    const label = document.createElement('span');
+    label.textContent = tag;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'tag-remove';
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove tag';
+    removeBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const newTags = (feed.tags || []).filter(t => t !== tag);
+      const resp = await send(MSG.UPDATE_FEED_TAGS, { id: feed.id, tags: newTags });
+      if (!resp.error) {
+        const f = feeds.find(f => f.id === feed.id);
+        if (f) f.tags = newTags;
+        renderFeedList();
+        renderTagFilterBar();
+      }
+    });
+
+    chip.appendChild(label);
+    chip.appendChild(removeBtn);
+    editor.appendChild(chip);
+  });
+
+  // Add-tag input
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tag-add-input';
+  input.placeholder = 'Add tag\u2026';
+  input.maxLength = 40;
+  if (tags.length >= 20) {
+    input.disabled = true;
+    input.title = 'Max 20 tags';
+  }
+
+  input.addEventListener('click', e => e.stopPropagation());
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter' && e.key !== ',') return;
+    e.preventDefault();
+    const normalised = input.value.replace(/,/g, '').trim().toLowerCase();
+    input.value = '';
+    if (!normalised) return;
+    const currentTags = feed.tags || [];
+    if (currentTags.includes(normalised) || currentTags.length >= 20) return;
+    const newTags = [...currentTags, normalised];
+    const resp = await send(MSG.UPDATE_FEED_TAGS, { id: feed.id, tags: newTags });
+    if (!resp.error) {
+      const f = feeds.find(f => f.id === feed.id);
+      if (f) f.tags = newTags;
+      renderFeedList();
+      renderTagFilterBar();
+    }
+  });
+
+  editor.appendChild(input);
+  li.appendChild(editor);
 }
 
 // ── Add feed ──
