@@ -45,6 +45,7 @@ async function loadFeeds() {
   feeds = resp.feeds;
   renderFeedList();
   renderTagFilterBar();
+  pruneActiveTags();
 }
 
 function renderFeedList() {
