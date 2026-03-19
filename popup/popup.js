@@ -58,6 +58,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnAddManual.addEventListener('click', () => addFeed(manualUrl.value.trim()));
   manualUrl.addEventListener('keydown', e => { if (e.key === 'Enter') addFeed(manualUrl.value.trim()); });
 
+  document.getElementById('btn-open-feedr').addEventListener('click', () => {
+    browser.tabs.create({ url: browser.runtime.getURL('newtab/newtab.html') });
+    window.close();
+  });
+
   function showMessage(text, type) {
     messageEl.textContent = text;
     messageEl.className = `message ${type}`;
