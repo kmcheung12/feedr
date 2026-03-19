@@ -117,3 +117,77 @@ describe('parseFeed — invalid input', () => {
     expect(() => parseFeed('')).toThrow('NOT_A_FEED');
   });
 });
+
+describe('parseFeed — RSS 2.0 guid URL fallback', () => {
+  function makeRss(itemXml) {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>T</title>
+    <link>https://example.com</link>
+    ${itemXml}
+  </channel>
+</rss>`;
+  }
+
+  test('guid with no isPermaLink attr and no link → url equals guid value', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <guid>https://example.com/post-1</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBe('https://example.com/post-1');
+  });
+
+  test('guid isPermaLink="true" and no link → url equals guid value', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <guid isPermaLink="true">https://example.com/post-2</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBe('https://example.com/post-2');
+  });
+
+  test('guid isPermaLink="false" and no link → url is null', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <guid isPermaLink="false">https://example.com/post-3</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBeNull();
+  });
+
+  test('guid is a URN with no isPermaLink attr and no link → url is null', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <guid>urn:uuid:abc123</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBeNull();
+  });
+
+  test('guid isPermaLink="true" is a URN and no link → url is null', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <guid isPermaLink="true">urn:uuid:def456</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBeNull();
+  });
+
+  test('link present wins over guid isPermaLink="true"', () => {
+    const xml = makeRss(`
+      <item>
+        <title>Post</title>
+        <link>https://example.com/post</link>
+        <guid isPermaLink="true">https://example.com/other</guid>
+      </item>`);
+    const result = parseFeed(xml);
+    expect(result.articles[0].url).toBe('https://example.com/post');
+  });
+});
