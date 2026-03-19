@@ -410,6 +410,28 @@ function bindKeyboardNav() {
     // Do not intercept when focus is in a text input or textarea (tag editor, add-feed input)
     if (e.target.closest('input, textarea')) return;
 
+    // State B: a link inside the reader panel has DOM focus — navigate links.
+    const readerLink = e.target.closest('#panel-reader a');
+    if (readerLink) {
+      const links = Array.from(document.querySelectorAll('#panel-reader a[href]'));
+      const idx = links.indexOf(readerLink);
+      if (e.key === 'ArrowDown') {
+        if (idx < links.length - 1) links[idx + 1].focus();
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        if (idx === 0) {
+          document.getElementById('panel-reader').focus();
+        } else {
+          links[idx - 1].focus();
+        }
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' && idx === 0) {
+        setFocusedPanel('articles');
+        e.preventDefault();
+      }
+      return;
+    }
+
     switch (e.key) {
       case 'ArrowLeft':
       case 'ArrowRight': {
@@ -429,7 +451,11 @@ function bindKeyboardNav() {
         } else if (focusedPanel === 'feeds') {
           document.getElementById('feed-list').scrollBy({ top: delta * 60, behavior: 'smooth' });
         } else if (focusedPanel === 'reader') {
-          document.getElementById('panel-reader').scrollBy({ top: delta * 200, behavior: 'smooth' });
+          // State A: panel-level focus — Down focuses the first link; Up does nothing.
+          if (e.key === 'ArrowDown') {
+            const first = document.querySelector('#panel-reader a[href]');
+            if (first) first.focus();
+          }
         }
         e.preventDefault();
         break;
