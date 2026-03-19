@@ -2,13 +2,17 @@
 // Service worker entry point. Handles all messages from newtab.js and popup.js.
 // Has access to: db, privateStore, parseFeed, Readability, MSG (loaded via importScripts).
 
-importScripts(
-  'lib/constants.js',
-  'lib/db.js',
-  'lib/parser.js',
-  'lib/Readability.js',
-  'lib/private-store.js'
-);
+// In Chrome (service worker), importScripts loads the libs.
+// In Firefox (event page via background.scripts), they're already loaded — importScripts is undefined.
+if (typeof importScripts !== 'undefined') {
+  importScripts(
+    'lib/constants.js',
+    'lib/db.js',
+    'lib/parser.js',
+    'lib/Readability.js',
+    'lib/private-store.js'
+  );
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message).then(sendResponse).catch(err => {
