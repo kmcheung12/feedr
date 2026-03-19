@@ -209,6 +209,7 @@ function appendTagEditor(li, feed) {
         if (f) f.tags = newTags;
         renderFeedList();
         renderTagFilterBar();
+        pruneActiveTags();
       }
     });
 
@@ -243,8 +244,11 @@ function appendTagEditor(li, feed) {
     if (!resp.error) {
       const f = feeds.find(f => f.id === feed.id);
       if (f) f.tags = newTags;
+      activeTags.add(normalised);  // auto-select the new tag as a filter
+      selectedFeedId = null;        // mutual exclusivity: activating a tag clears feed selection
       renderFeedList();
       renderTagFilterBar();
+      renderArticleList();          // article list must update to reflect new filter
     }
   });
 
@@ -371,6 +375,9 @@ function navigateArticle(delta) {
       const feedTags = (feedsById.get(article.feedId) || {}).tags || [];
       return feedTags.some(t => activeTags.has(t));
     });
+  }
+  if (selectedFeedId !== null) {
+    visible = visible.filter(a => a.feedId === selectedFeedId);
   }
   if (visible.length === 0) return;
 
