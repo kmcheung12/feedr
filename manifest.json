@@ -15,10 +15,7 @@
   "browser_action": {
     "default_icon": {"48": "icons/icon-48.png"},
     "default_popup": "popup/popup.html",
-    "default_title": "Add feed to Feedr"
-  },
-  "chrome_url_overrides": {
-    "newtab": "newtab/newtab.html"
+    "default_title": "Feedr"
   },
   "icons": {
     "48": "icons/icon-48.png"
