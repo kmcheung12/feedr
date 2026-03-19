@@ -9,6 +9,7 @@ let selectedArticleId = null;
 let currentSort = 'time';
 let activeTags = new Set();
 let expandedFeedId = null;
+let selectedFeedId = null;
 let focusedPanel = 'articles'; // 'feeds' | 'articles' | 'reader'
 const PANELS = ['feeds', 'articles', 'reader'];
 let isPrivate = false;
@@ -146,6 +147,29 @@ function toggleFeedEditor(id) {
   expandedFeedId = (expandedFeedId === id) ? null : id;
   renderFeedList();
   renderTagFilterBar();
+}
+
+function setSelectedFeed(id) {
+  selectedFeedId = (selectedFeedId === id) ? null : id;
+  if (selectedFeedId !== null) activeTags.clear();
+  renderFeedList();
+  renderTagFilterBar();
+  renderArticleList();
+}
+
+function pruneActiveTags() {
+  const existingTags = new Set(feeds.flatMap(f => f.tags || []));
+  let changed = false;
+  activeTags.forEach(tag => {
+    if (!existingTags.has(tag)) {
+      activeTags.delete(tag);
+      changed = true;
+    }
+  });
+  if (changed) {
+    renderTagFilterBar();
+    renderArticleList();
+  }
 }
 
 function appendTagEditor(li, feed) {

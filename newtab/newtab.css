@@ -79,6 +79,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 #feed-list li.feed-error .feed-title { color: var(--danger); }
 
+#feed-list li.feed-selected {
+  background: var(--accent-muted, rgba(31,111,235,0.15));
+}
+
 /* ── Add feed ── */
 #btn-show-add { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
 #btn-show-add:hover { color: var(--accent); }
