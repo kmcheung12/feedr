@@ -1,6 +1,6 @@
 // newtab/newtab.js
 // Three-panel new tab page UI.
-// Communicates with background.js exclusively via browser.runtime.sendMessage.
+// Communicates with background.js exclusively via chrome.runtime.sendMessage.
 
 // ── State ──
 let feeds = [];
@@ -11,6 +11,7 @@ let activeTags = new Set();
 let expandedFeedId = null;
 let focusedPanel = 'articles'; // 'feeds' | 'articles' | 'reader'
 const PANELS = ['feeds', 'articles', 'reader'];
+let isPrivate = false;
 
 function setFocusedPanel(name) {
   focusedPanel = name;
@@ -21,11 +22,13 @@ function setFocusedPanel(name) {
 
 // ── Messaging helper ──
 function send(type, payload = {}) {
-  return browser.runtime.sendMessage(Object.assign({ type }, payload));
+  return chrome.runtime.sendMessage(Object.assign({ type, private: isPrivate }, payload));
 }
 
 // ── Boot ──
 document.addEventListener('DOMContentLoaded', async () => {
+  const win = await chrome.windows.getCurrent();
+  isPrivate = win.incognito;
   await loadFeeds();
   await loadArticles();
   bindFeedControls();
