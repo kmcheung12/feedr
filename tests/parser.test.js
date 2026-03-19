@@ -180,7 +180,7 @@ describe('parseFeed — RSS 2.0 guid URL fallback', () => {
     expect(result.articles[0].url).toBeNull();
   });
 
-  test('link present wins over guid isPermaLink="true"', () => {
+  test('guid isPermaLink="true" wins over link', () => {
     const xml = makeRss(`
       <item>
         <title>Post</title>
@@ -188,7 +188,7 @@ describe('parseFeed — RSS 2.0 guid URL fallback', () => {
         <guid isPermaLink="true">https://example.com/other</guid>
       </item>`);
     const result = parseFeed(xml);
-    expect(result.articles[0].url).toBe('https://example.com/post');
+    expect(result.articles[0].url).toBe('https://example.com/other');
   });
 
   test('no guid and no link → url is null', () => {
