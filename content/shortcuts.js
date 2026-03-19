@@ -65,7 +65,7 @@
       try {
         const url = await navigator.clipboard.readText();
         if (url && url.trim()) {
-          chrome.runtime.sendMessage({ type: MSG.ADD_FEED, url: url.trim(), private: chrome.extension.inIncognitoContext });
+          chrome.runtime.sendMessage({ type: MSG.ADD_FEED_VIA_POPUP, url: url.trim() });
         }
       } catch (err) {
         // Clipboard access denied — silently ignore.
