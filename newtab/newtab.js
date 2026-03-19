@@ -319,6 +319,75 @@ function bindSortControls() {
   });
 }
 
+function navigateArticle(delta) {
+  // Derive the same visible list as renderArticleList()
+  // articles is already sorted (pre-sorted from background); do not re-sort.
+  let visible = articles;
+  if (activeTags.size > 0) {
+    const feedsById = new Map(feeds.map(f => [f.id, f]));
+    visible = articles.filter(article => {
+      const feedTags = (feedsById.get(article.feedId) || {}).tags || [];
+      return feedTags.some(t => activeTags.has(t));
+    });
+  }
+  if (visible.length === 0) return;
+
+  // findIndex returns -1 if no article is selected or if the selected article
+  // was filtered out (e.g. by a tag change). Treat both as "no current position":
+  // delta=1 → select first article; delta=-1 → do nothing.
+  let idx = visible.findIndex(a => a.id === selectedArticleId);
+  if (idx === -1 && delta === -1) return;
+
+  const newIdx = Math.min(Math.max(idx + delta, 0), visible.length - 1);
+  selectArticle(visible[newIdx].id);
+
+  // Scroll the newly selected <li> into view if it's outside the visible area
+  const li = document.querySelector(
+    `#article-list li[data-article-id="${visible[newIdx].id}"]`
+  );
+  if (li) li.scrollIntoView({ block: 'nearest' });
+}
+
+function bindKeyboardNav() {
+  // Panel click listeners — clicking anywhere in a panel updates keyboard focus.
+  // Note: existing stopPropagation() calls on the tag editor and feed action buttons
+  // prevent these from firing for those specific clicks, which is acceptable.
+  document.getElementById('panel-feeds').addEventListener('click', () => setFocusedPanel('feeds'));
+  document.getElementById('panel-articles').addEventListener('click', () => setFocusedPanel('articles'));
+  document.getElementById('panel-reader').addEventListener('click', () => setFocusedPanel('reader'));
+
+  document.addEventListener('keydown', e => {
+    // Do not intercept when focus is in a text input or textarea (tag editor, add-feed input)
+    if (e.target.closest('input, textarea')) return;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowRight': {
+        const idx = PANELS.indexOf(focusedPanel);
+        const next = e.key === 'ArrowRight'
+          ? Math.min(idx + 1, PANELS.length - 1)
+          : Math.max(idx - 1, 0);
+        setFocusedPanel(PANELS[next]);
+        e.preventDefault();
+        break;
+      }
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        const delta = e.key === 'ArrowDown' ? 1 : -1;
+        if (focusedPanel === 'articles') {
+          navigateArticle(delta);
+        } else if (focusedPanel === 'feeds') {
+          document.getElementById('feed-list').scrollBy({ top: delta * 60, behavior: 'smooth' });
+        } else if (focusedPanel === 'reader') {
+          document.getElementById('panel-reader').scrollBy({ top: delta * 200, behavior: 'smooth' });
+        }
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+}
+
 // ── Article reader ──
 async function selectArticle(id) {
   selectedArticleId = id;
