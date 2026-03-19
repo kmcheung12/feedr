@@ -15,10 +15,16 @@
     <div id="manual">
       <p class="label">Or enter a feed URL:</p>
       <input id="manual-url" type="url" placeholder="https://example.com/feed.xml">
-      <button id="btn-add-manual">Add</button>
+      <div class="btn-row">
+        <button id="btn-add-manual">Add</button>
+        <button id="btn-shortcut-add" class="btn-shortcut" title="Set keyboard shortcut for Add">⌨ —</button>
+      </div>
     </div>
     <p id="message" class="message hidden"></p>
-    <button id="btn-open-feedr">Open Feedr ↗</button>
+    <div class="btn-row" id="open-feedr-row">
+      <button id="btn-open-feedr">Open Feedr ↗</button>
+      <button id="btn-shortcut-open" class="btn-shortcut" title="Set keyboard shortcut for Open Feedr">⌨ —</button>
+    </div>
   </div>
   <script src="../lib/constants.js"></script>
   <script src="popup.js"></script>
