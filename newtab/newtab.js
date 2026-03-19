@@ -7,6 +7,8 @@ let feeds = [];
 let articles = [];
 let selectedArticleId = null;
 let currentSort = 'time';
+let activeTags = new Set();
+let expandedFeedId = null;
 
 // ── Messaging helper ──
 function send(type, payload = {}) {
@@ -27,6 +29,7 @@ async function loadFeeds() {
   if (resp.error) return;
   feeds = resp.feeds;
   renderFeedList();
+  renderTagFilterBar();
 }
 
 function renderFeedList() {
@@ -86,6 +89,36 @@ function renderFeedList() {
   });
 }
 
+function renderTagFilterBar() {
+  const bar = document.getElementById('tag-filter-bar');
+  const allTags = [...new Set(feeds.flatMap(f => f.tags || []))].sort();
+
+  if (allTags.length === 0) {
+    bar.classList.add('hidden');
+    bar.innerHTML = '';
+    return;
+  }
+
+  bar.classList.remove('hidden');
+  bar.innerHTML = '';
+
+  allTags.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-filter-chip' + (activeTags.has(tag) ? ' active' : '');
+    btn.textContent = tag;
+    btn.addEventListener('click', () => {
+      if (activeTags.has(tag)) {
+        activeTags.delete(tag);
+      } else {
+        activeTags.add(tag);
+      }
+      renderTagFilterBar();
+      renderArticleList();
+    });
+    bar.appendChild(btn);
+  });
+}
+
 // ── Add feed ──
 function bindFeedControls() {
   const btnShowAdd = document.getElementById('btn-show-add');
@@ -132,6 +165,7 @@ async function loadArticles() {
   articles = resp.articles;
   renderArticleList();
   renderFeedList(); // refresh unread counts
+  renderTagFilterBar();
 }
 
 function renderArticleList() {
@@ -195,6 +229,7 @@ async function selectArticle(id) {
     const li = document.querySelector(`#article-list li[data-article-id="${id}"]`);
     if (li) li.classList.add('read');
     renderFeedList(); // update unread badge
+    renderTagFilterBar();
     send(MSG.MARK_READ, { id }); // fire and forget
   }
 
