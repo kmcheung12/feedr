@@ -9,6 +9,15 @@ let selectedArticleId = null;
 let currentSort = 'time';
 let activeTags = new Set();
 let expandedFeedId = null;
+let focusedPanel = 'articles'; // 'feeds' | 'articles' | 'reader'
+const PANELS = ['feeds', 'articles', 'reader'];
+
+function setFocusedPanel(name) {
+  focusedPanel = name;
+  PANELS.forEach(p => {
+    document.getElementById('panel-' + p).classList.toggle('panel-focused', p === name);
+  });
+}
 
 // ── Messaging helper ──
 function send(type, payload = {}) {
@@ -21,6 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadArticles();
   bindFeedControls();
   bindSortControls();
+  bindKeyboardNav();
+  setFocusedPanel('articles'); // apply initial focus ring
 });
 
 // ── Feed loading ──
