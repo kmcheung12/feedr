@@ -406,6 +406,11 @@ function bindKeyboardNav() {
   document.getElementById('panel-articles').addEventListener('click', () => setFocusedPanel('articles'));
   document.getElementById('panel-reader').addEventListener('click', () => setFocusedPanel('reader'));
 
+  // Restore panel focus when the tab regains focus so arrow keys work without a click.
+  window.addEventListener('focus', () => {
+    document.getElementById('panel-' + focusedPanel).focus();
+  });
+
   document.addEventListener('keydown', e => {
     // Do not intercept when focus is in a text input or textarea (tag editor, add-feed input)
     if (e.target.closest('input, textarea')) return;
